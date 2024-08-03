@@ -55,7 +55,7 @@ Feel free to use this in your projects!
 
 Or: follow the below tutorial as a project to DIY!
 
-###This is just a little project I made to learn about Arduino programming and electronics. I'm by no means an expert, I just thought it'd be useful to share for someone getting into electronics. A tutorial on this can be found below:
+### This is just a little project I made to learn about Arduino programming and electronics. I'm by no means an expert, I just thought it'd be useful to share for someone getting into electronics. A tutorial on this can be found below:
 
 You'll need 
 - An Arduino, obviously. Actually I don't have one, so I used a cheap arduino-compatible Keyestudio board which did just fine.
