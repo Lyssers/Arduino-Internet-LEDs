@@ -551,7 +551,7 @@ Then will then write a p character and a line break, enabling programmatic mode,
 
 So having run it with `python3 script.py` the LEDs lit up as expected, we’re golden!
 
-You can also read what the Arduino wrote back on the serial port (like the debugging info it will write from the setAllPins() function like this:
+You can also read what the Arduino wrote back on the serial port (like the debugging info it will write from the `setAllPins()` function like this:
 
 ```
 while ser.in_waiting:  # Or: while ser.inWaiting():
@@ -576,6 +576,7 @@ void setAllPins(int redIntensity, int greenIntensity, int blueIntensity){
     Serial.println();
   }
 }
+```
 
 To write a Python wrapper around this we can do:
 
