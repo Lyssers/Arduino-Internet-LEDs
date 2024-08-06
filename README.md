@@ -25,7 +25,7 @@ Useful for automating with something else, such as hooking it up to some other d
 
 If all works,
 
-# Then connect the arduino to a computer (e.g. a Raspberry Pi) and run the .py file
+Then connect the arduino to a computer (e.g. a Raspberry Pi) and run the .py file
 
 Resolve dependencies if any errors occur. You'll probably want to install the PySerial library with pip3 install pyserial and fastAPI.
 
@@ -53,7 +53,7 @@ You'll need to forward the port on your router or use a reverse proxy or somethi
 
 Feel free to use this in your projects! 
 
-### If you'd like to make this yourself, consider reading the tutorial I wrote on this project below:
+# If you'd like to make this yourself, consider reading the tutorial I wrote on this project below:
 
 You'll need 
 - An Arduino, obviously. Actually I don't have one, so I used a cheap arduino-compatible Keyestudio board which did just fine.
