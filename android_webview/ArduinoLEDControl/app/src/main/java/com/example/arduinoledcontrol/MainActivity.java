@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowUniversalAccessFromFileURLs(true);
         webSettings.setDomStorageEnabled(true);
 
-        wv.loadUrl("file:///android_asset/html/index.html");
+	//Actual dir for this is android_webview/ArduinoLEDControl/app/src/main/assets/html/
+        wv.loadUrl("file:///android_asset/html/index.html"); 
     }
 }
