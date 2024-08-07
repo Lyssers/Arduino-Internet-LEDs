@@ -51,6 +51,7 @@ android_webview/ArduinoLEDControl/app/src/main/res/drawable*
 android_webview/ArduinoLEDControl/app/src/main/assets/html/
 android_webview/ArduinoLEDControl/app/src/androidTest
 android_webview/ArduinoLEDControl/app/src/main/Alyssa_launcher-playstore.png
+android_webview/ArduinoLEDControl/app/src/test/
 
 # Gradle files
 .gradle/
