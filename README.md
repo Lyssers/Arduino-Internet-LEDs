@@ -53,6 +53,10 @@ You'll need to forward the port on your router or use a reverse proxy or somethi
 
 Feel free to use this in your projects! 
 
+### If you also want the client
+
+Just build the react app in the client folder of this code altering the request destination and key to match ones in your python API, then open index.html in build, or drop the files in "build" to the dir in the android app code in the android folder and compile that as an .APK in android studio, then send it to your phone and it *should* work!
+
 # If you'd like to make this yourself, consider reading the tutorial I wrote on this project below:
 
 You'll need 
@@ -511,7 +515,9 @@ And that's that!
 
 If you want to also control it over the internet, the best way imo is to use a Raspberry Pi.
 
-Now you could in theory just hook up the lights to a raspberry pi as well, but I did want the arduino-LED set up to be reusable for other things so I segmented it. Bear in mind that due to the speed of serial, USB and the Pi and arduino, this will be slow. Connecting lights to the Pi directly is much faster. Maybe that's a future project?
+Now you could in theory just hook up the lights to a raspberry pi as well, but I did want the arduino-LED set up to be reusable for other things so I segmented it. This way, I don't have to use a Pi, the script could run just as well on an old laptop or server. 
+
+Bear in mind that due to the speed of serial, USB and the Pi and arduino, this will be slow. Connecting lights to a Pi directly is much faster and if you're using it for the web part it could probably significantly improve performance.
 
 My Pi had a busted MicroSD card slot, so I booted it off a USB mSATA SSD enclosure, which you can do apparently.
 
@@ -660,3 +666,713 @@ and ser.write to:
 Now I'd suggest setting a more secure secretKey value and maybe making the password a parameter, or even make a more sophisticated auth scheme! Maybe base64 encode it, at least haha.
 
 And Voila, we got an API written in Python running on our Raspberry Pi that can take requests over the local network to send commands to the Arduino to set colours of an LED.
+
+To make it work on the internet I had to go into my router config looking for DHCP settings to assign a static IP address to the address above.
+
+Then I forwarded the above to the port to that IP on the port-forwarding page
+
+Now if I hit my external IP on that port it will work!
+However if you don’t have a static home IP, as most don’t since it costs a lot of money at least in the UK - you can use a DDNS service like NoIP which lets you register a .ddns.net hostname and use a utility called DUC that can run on your PC to check your current external IP and automatically update the DNS record to point to your current external IP.
+
+First I added some extra endpoints to the API, such as to allow us to use the rainbow function on the arduino:
+
+First I added this global variable to track whether we should reject controls or not based on the Rainbow setting on the API:
+
+`control = True`
+
+Then added two more endpoints for turning the rainbow on and off
+
+```
+@app.get("/arduino-rainbow")
+def rainbow(secretKey = "a"):
+    global control
+    if ((secretKey == "YourKeyHere") and (control == True)):
+        ser.reset_output_buffer()
+        ser.reset_input_buffer()
+        ser.write("p".encode())
+        time.sleep(1)
+        ser.write("a".encode())
+        time.sleep(1)
+        ser.write("253".encode())
+        ser.reset_output_buffer()
+        ser.reset_input_buffer()
+        control = False
+        return{"OK - Rainbow Enabled! Colour control disabled. Hit the /arduino-rainbow-off endpoint to turn it off!"}
+    else:
+        return{"That's so heckin' uncool"}
+
+
+@app.get("/arduino-rainbow-off")
+def rainbowoff(secretKey = "a"):
+    global control
+    if ((secretKey == "YourKeyHere") and (control == False)):
+        ser.reset_output_buffer()
+        ser.reset_input_buffer()
+        ser.write("a".encode())
+        time.sleep(2)
+        ser.write("p".encode())
+        time.sleep(2)
+        ser.reset_output_buffer()
+        ser.reset_input_buffer()
+        control = True
+        return{"OK - Rainbow Disabled! Colour control restored."}
+    else:
+        return {"That's so heckin' uncool"}
+```
+
+It's a somewhat hacky way to do this, in real life we should really track state in a more coherent way, like e.g. by having a client receive state and update it's UI elements and model to match that but this is just a fun little lights project, so this will suffice.
+
+To use globals in Python you can simply use the global keyword, so that the interpreter understands whether you mean a new variable called control in the scope of this function or the global variable called control defined earlier and the rest is fairly straightforward. I used the delays here more sparingly as I don’t really mind them as much.
+
+You may notice I also added a password to the API, as a simple authentication method so that random bots and crawlers on the internet don’t hit our lights and I altered the colour endpoint similarly adding a check for the control variable also.
+
+
+To make a client I'm going to use React, in this use case it fits because it’s just extremely convenient to write small apps with ready made components
+
+React apps generally speaking are structured quite differently from say Java or C# or Python and the syntax to someone who never used JavaScript outside of a classroom alert(“LOL”); feels downright bizarre but at a basic level it’s not that complicated.
+
+I was picturing the UI as a color wheel, so as not to reinvent the wheel, pun very much intended, I went and looked up and found @uiw/react-color-wheel on NPM, along with @uiw/color-convert available from here: https://uiwjs.github.io/react-color/, I’ll also be using Axios to make the web requests to our API as that’s what’s worked well for me in the past.
+
+I was also picturing this not as a hosted website/web-app that I can access on a server by URL per-se, but as explicitly a front-end UI interface and client in the client-server model to be deployed to devices like a traditional desktop app.
+
+Now there are way better ways of doing this with Electron or even making React Native apps, but there's also another, much much hackier dirtier way to end up with both a web app and a "native" app from one codebase that I'll discuss below.
+
+If you never made a React App before - all you need to do is install Node.js to use Node Package Manager aka NPM. If you use Linux, you probably know how, if you use Windows, you can follow the instructions here to do so:
+
+https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-windows
+
+My only note here is this part of the documentation is genuinely unhinged. NPM just does not work properly on WSL in my experience, more specifically WSL2! Most likely due to the very slow storage of WSL2, a well-known issue.
+
+![image](https://github.com/user-attachments/assets/8bd26505-c152-4c9f-b507-b02da41f2e5b)
+
+
+Cloning a git repo takes minutes vs seconds on normal windows and live-refresh does not work, I love bash too, but not at the cost of floppy drive tier I/O performance that WSL2 provides. Compiling the app takes actual minutes! The Docs even say so:
+https://learn.microsoft.com/en-us/windows/wsl/compare-versions
+
+![image](https://github.com/user-attachments/assets/24d441d4-438c-4d22-b84d-e8ae917024c1)
+
+Don’t get me wrong, I love WSL2, it’s really a gift honestly, but just not quite there yet. At least PS6 is actually pretty nice to use.
+
+Then I mkdir’d in my usual projects directory to make things organized and made a folder, use NPX - which is like NPM but it executes packages instead of installing them - to execute a package called create-react-app with npx create-react-app led_basic which will just set up everything we need for the React App.
+
+Once that’s done, I went ahead and installed the needed libraries npm install @uiw/react-color-wheel @uiw/color-convert and axios for our GET requests.
+
+Once done I went into the src directory in the VSCode file browser and deleted all the default generated files, then created two files: App.js and index.js.
+
+Starting with index.js, this is all fairly straightforward.
+
+So I started by having these three imported:
+```
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+```
+
+App is the name of the function we’re importing from App.js and ./App is just it’s location and filename in the same directory as our index.js
+
+This essentially just calls the render function to well, render the webpage from JSX code, by first identifying a root for the DOM - Document Object Model which is an interface for programming languages to interact with and modify webpages by referencing nodes and objects which this will create from the JSX, or Javascript Syntax Extension code:
+
+```
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+That’s it! It just renders the JSX from App.js, moving onto that:
+first I imported the libraries I installed earlier:
+
+```
+import Wheel from '@uiw/react-color-wheel';
+import {hsvaToRgba } from '@uiw/color-convert';
+import axios from 'axios
+```
+
+And all this stuff from React itself.
+
+```
+import React, { useState, Fragment, useEffect } from 'react';
+```
+
+App.js is usually where the main application will be stored, it will return JSX code for rendering the web page in index.js - this will consist of a main function expressed either as a function or a constant variable. Constant variable, that doesn’t make any sense. You get what I mean. A constant that equals a function. This is called the Arrow Syntax.
+
+*Normal People Syntax*:
+
+function getData(data) {
+   this.data = data;
+};
+
+*Arrow Function Syntax*:
+const getData = (data) = {this.data = data;});
+
+They’re not exactly just syntactic sugar though, for more technical descriptions of differences and reasons to use either read this excellent mozilla documentation: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions
+
+For this purpose I decided to just use the arrow syntax for our main app function with a return and use the standard function syntax for various helper functions.
+
+I started by just rendering the color wheel, it’ll be nice to get to see it!
+
+```
+const App = () => {
+return (
+    <div className="wrapper">
+          <Fragment>
+             <Wheel/>
+         </Fragment>            
+    </div>
+  );
+}
+export default App;
+```
+
+This just returns an HTML <div> which will be a wrapper for our JSX code where I included a React Fragment containing the imported wheel component.
+
+Then I ran it with npm start and it worked! I could see the wheel. But it wasn’t interactive. You can actually see the picker icon trapped all the way in the left corner.
+
+![image](https://github.com/user-attachments/assets/43a55f15-67d5-4dac-8c59-bf60ec911ee6)
+
+
+To make it actually interactive I needed to add some logic. In React the functional way to store things is to use States - which refers to data in the application that needs tracking in some way - so color here.
+
+I added to the wheel parameters the color that the wheel should show:
+```
+<Wheel color={hsva}/>
+```
+
+To track the color I used the UseState hook, the first element in that array is the data we want to keep track o and the second is the name of the function to update it, the useState parameters are the initialization values for the HSVA stored colour - Hue, Saturation, Value and Alpha (transparency).
+
+![image](https://github.com/user-attachments/assets/1c825a4c-854f-4bdc-bab7-7bddcde3cbae)
+
+
+```
+const [hsva, setHsva] = useState({ h: 214, s: 43, v: 90, a: 1 });
+```
+
+Now I needed something to actually call that function, so I added a call to a HandleChange function to the onChange parameter of the wheel:
+
+```
+<Wheel color={hsva} onChange={handleChange}/>
+```
+
+Which I then defined as this:
+
+```
+const handleChange = (color) => {
+    setHsva({ ...hsva, ...color.hsva }, () => { });
+  }
+```
+
+`…hsva` will unpack our hsva object (think of it like how navigating directories) to it’s values and set it to the hsva parameter of the color object that has the same done to it.
+
+And the wheel was now interactable, I could move the selector.
+
+![image](https://github.com/user-attachments/assets/30fda07e-a42d-45ef-9c85-8e63c374c72b)
+
+
+Next I needed some code to send the color selected from the wheel in RGB format to our API endpoint, this is where Axios comes in.
+
+Our API takes color as just an RGB string of 255255255, so I needed to format it as such, this is where the conversion library comes into play.
+
+First I defined three javascript variables outside the main function:
+
+```
+var red;
+var blue;
+var green;
+```
+
+Just like in Python, JS variables aren’t statically-typed, their type is inferred at runtime.
+
+Next I used the hsvaToRgba function inside the handleChange to set the variables 
+
+```
+    red = new String((hsvaToRgba({ ...color.hsva }).r));
+    green = new String((hsvaToRgba({ ...color.hsva }).g));
+    blue = new String((hsvaToRgba({ ...color.hsva }).b));
+```
+By strongly typing the variables I ensured that whatever the result was it would get converted to String from the extracted .r parameter.
+
+This is where I ran into a bit of a problem. The colours converted to RGB alright, but when I used the debugging browser in VSCode and console.log functions to see what was returned I’d see values like 0 and 10, whereas our API expects it all to be 000 and 010 and such, three digits for each colour. Not wanting to really rewrite extra logic into the API on the Pi side, I added a helper colorFormatter function.
+
+```
+function colorFormatter(newcolor) {
+
+
+  //console.log(newcolor.length);
+  if (newcolor.length === 1) {
+    newcolor = ("00" + newcolor);
+  }
+  if (newcolor.length === 2) {
+    newcolor = ("0" + newcolor);
+  }
+  return newcolor;
+
+
+}
+```
+
+Just an if statement that appends zeroes to the new color depending on it’s length. I added the function call like so:
+
+```
+  const handleChange = (color) => {
+
+
+    red = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).r)));
+    green = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).g)));
+    blue = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).b)));
+    setHsva({ ...hsva, ...color.hsva }, () => { });
+
+
+  }
+```
+Console.log showed it working well enough.
+
+Next all I had to do was make a call to the API, this is as simple as making a new function like:
+
+```
+async function transmitNewColor () {
+
+
+      console.log("Red " + red);
+      console.log("Green " + green);
+      console.log("Blue " + blue);
+      var response = await axios.get("http://192.168.0.84:4000/arduino-colour-set?colour=" + red + green + blue);
+    }
+```
+
+And I added a call to the transmitNewColor in the handleChange function. 
+
+And… it didn’t work. It would send the color, but it’d be like super delayed and not even the right one. I expected some delay for sure with this contraption of sending commands over serial but it would be like one whole choice behind.
+
+Looking at the uvicorn logs on my Pi terminal, everything seemed okay.
+
+Until I noticed that the colours I was receiving there were indeed one step behind.
+
+![image](https://github.com/user-attachments/assets/7b226e43-d5dd-49fe-8621-c6c6ad14fe2f)
+
+
+Well maybe it didn’t have to be instant, I thought, maybe I’d just try to run a background thread or something sending them periodically but very quickly, just for now at least, I thought. But that was a false hope and led to total failure. Even when I finally realized how to implement periodic updates, the colours would just still be behind the most active choice.
+
+It took me so long to understand what the problem even was, literal hours and hours of debugging and research and docs and so on until I took a step back and came back the next day with a fresh mind, or sort of, I’d been up for about a whole day making the arduino work, and then another for the Pi and beginning of this.
+
+And it’s then, through my sleepy mind I realized that ultimately the problem was that variables weren’t getting set to the right state. But why?
+
+Well React doesn’t actually instantaneously update the state, so the red green and blue variables were all getting set to the last version of …color.hsva, as weird as that sounds. It simply doesn’t care about this sort of stuff.
+
+Instead what I had to do was use a useEffect hook to make a request with the freshest data, after thousands of tabs and searches and reading docs and stackoverflow and quora, this was the solution, I had in fact already implemented a hook to run regularly on a timer to fetch the colour, but what I had to actually do was just specify the state which it should watch for and run on.
+
+
+```
+import React, { useState, Fragment, useEffect } from 'react';
+import Wheel from '@uiw/react-color-wheel';
+import {hsvaToRgba } from '@uiw/color-convert';
+import axios from 'axios';
+
+
+
+
+function colorFormatter(newcolor) {
+
+
+  //console.log(newcolor.length);
+  if (newcolor.length === 1) {
+    newcolor = ("00" + newcolor);
+  }
+  if (newcolor.length === 2) {
+    newcolor = ("0" + newcolor);
+  }
+  return newcolor;
+
+
+}
+
+
+var red;
+var blue;
+var green;
+
+
+//Main Function
+const App = () => {
+  //Colour
+
+
+  const [hsva, setHsva] = useState({ h: 210, s: 34, v: 90, a: 1 });
+  const handleChange = (color) => {
+
+
+    red = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).r)));
+    green = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).g)));
+    blue = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).b)));
+    setHsva({ ...hsva, ...color.hsva }, () => { });
+
+
+  }
+
+
+  useEffect(() => {
+
+
+    async function transmitNewColor () {
+
+
+      console.log("Red " + red);
+      console.log("Green " + green);
+      console.log("Blue " + blue);
+      var response = await axios.get("http://192.168.0.84:4000/arduino-colour-set?colour=" + red + green + blue);
+    }
+
+
+    transmitNewColor();
+  }, [hsva]);
+
+
+
+
+  return (
+    <div className="wrapper">
+
+
+                  <Fragment>
+                    <Wheel color={hsva}
+                      onChange={handleChange}
+                    />
+
+
+                  </Fragment>            
+    </div>
+
+
+
+
+  );
+}
+export default App;
+
+```
+
+And it worked!
+
+![image](https://github.com/user-attachments/assets/a9146297-66e1-434e-a7ef-bfb11972b8f0)
+
+
+Now I could add stuff like a switch for the rainbow:
+
+```
+
+import Switch from '@mui/material/Switch';
+```
+
+Then in the <div>
+
+```
+        Rainbow?
+<Switch onChange={handleRainbow} defaultChecked={false}/>
+```
+
+I pretty much made the same thing for the rainbow endpoints as I did for the original colour set endpoint:
+
+```
+  const [rainbow, setRainbow] = useState(false);
+ 
+  const handleRainbow = (event) => {
+    setRainbow(!rainbow);
+  }
+
+
+  useEffect(() => {
+
+
+    const transmitRainbow = async () => {
+
+
+       if (rainbow){
+        var response = await axios.get(requestURL + "arduino-rainbow?secretKey=yourkeyhere");
+      }
+
+
+      if (rainbow === false){
+        var response = await axios.get(requestURL+ "/arduino-rainbow?secretKey=yourkeyhere");
+      }
+     
+    }
+
+
+    transmitRainbow();
+}, [rainbow])
+```
+
+Again, in the vein hope of keeping the states somewhat coherent. This doesn't always work, it just does most of the time. A real state tracking solution would add more complexity to this project than it needs, though.
+
+Since Rainbow is a boolean here whether it’s on or off the handler just sets it to the inverse of the value it has had previously. Then we use an Effect again with an async function that checks whether it’s true or false to know where to fire off the request to.
+
+The full code now looks like this:
+
+```
+import React, { useState, Fragment, useEffect } from 'react';
+import Wheel from '@uiw/react-color-wheel';
+import {hsvaToRgba } from '@uiw/color-convert';
+import Switch from '@mui/material/Switch';
+import axios from 'axios';
+
+
+
+
+function colorFormatter(newcolor) {
+
+
+  //console.log(newcolor.length);
+  if (newcolor.length === 1) {
+    newcolor = ("00" + newcolor);
+  }
+  if (newcolor.length === 2) {
+    newcolor = ("0" + newcolor);
+  }
+  return newcolor;
+
+
+}
+
+
+var requestURL = "http://myhostname.ddns.net:4000"
+var red;
+var blue;
+var green;
+
+
+//Main Function
+const App = () => {
+  //Colour
+
+
+  const [hsva, setHsva] = useState({ h: 214, s: 43, v: 90, a: 1 });
+  const handleChange = (color) => {
+
+
+    red = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).r)));
+    green = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).g)));
+    blue = colorFormatter(new String((hsvaToRgba({ ...color.hsva }).b)));
+    setHsva({ ...hsva, ...color.hsva }, () => { });
+
+
+  }
+
+
+  useEffect(() => {
+
+
+    const transmitNewColor = async () => {
+
+
+      console.log("Red " + red);
+      console.log("Green " + green);
+      console.log("Blue " + blue);
+      console.log(requestURL + "/arduino-colour-set?secretKey=yourkeyhere&colour=" + red + green + blue);
+      var response = await axios.get(requestURL + "/arduino-colour-set?secretKey=yourkeyhere&colour=" + red + green + blue);
+    }
+
+
+    transmitNewColor();
+  }, [hsva]);
+
+
+  const [rainbow, setRainbow] = useState(false);
+ 
+  const handleRainbow = (event) => {
+    setRainbow(!rainbow);
+  }
+
+
+  useEffect(() => {
+
+
+    const transmitRainbow = async () => {
+
+
+      if (rainbow){
+        var response = await axios.get(requestURL + "arduino-rainbow?secretKey=yourkeyhere");
+      }
+
+
+      if (rainbow === false){
+        var response = await axios.get(requestURL+ "/arduino-rainbow?secretKey=yourkeyhere");
+      }
+     
+    }
+    transmitRainbow();
+}, [rainbow])
+
+
+  return (
+    <div className="wrapper">
+
+
+                  <Fragment>
+                    <Wheel color={hsva}
+                      onChange={handleChange}
+                    />
+                  Rainbow?
+                  <Switch onChange={handleRainbow} defaultChecked={false} />
+                  </Fragment>            
+    </div>
+
+
+
+
+  );
+}
+export default App;
+```
+I also added a styles.css file and imported it in index.js, very simple, but it did center our wheel:
+
+```
+html {
+  background-color: transparent;
+}
+html, body, #root {
+  margin: 0;
+  padding: 0;
+}
+#root {
+  height: 100vh;
+  display: grid;
+  place-content: center;
+}
+.wrapper {
+  width: fit-content;
+}
+```
+
+And also:
+
+```
+import "./styles.css";
+```
+
+Once it worked, I used `npm build` to create a built version containing just HTML/CSS/JS.
+
+![image](https://github.com/user-attachments/assets/348d6e7d-7dcd-4a22-89ec-f98c3a0bf662)
+
+Opening the .html file it didn't work, but was fairly obvious why - my homepage wasn't running at the root of a server. I didn’t want to use a server though, so I just tried to open the .html file in the build folder in browser which…didn’t work and it’s fairly obvious why, my project isn’t running at the root of a server, so I did as the info message said and added this to package.json:
+
+```
+{
+  "name": "led_basic",
+  "version": "0.1.0",
+  "homepage": ".",
+  "private": true,
+```
+
+And after rerunning build, it worked!
+
+But how do I get this on my phone?
+
+Well to save rewriting anything - basically what I did is export the app as a static HTML page and then load it on my phone, as I had an android phone I used Android Studio for this, the IDE for making native Java/Kotlin Android apps.
+
+Once I got Android Studio installed and working, I created a new project with an empty Views Activity, first I picked the Kotlin one by accident, thanks Google, I was super confused and thought damn I don’t remember Java as well as I thought 🤣!
+
+Anywho, so once the Gradle Build runs and resolves all the dependencies and such on it, I opened up activity_main.xml l which is the xml file that defines the UI for the main activity of our app - activity being android development term for essentially a screen and it’s contained logic.
+
+I deleted the default hello world that was already there and dragged and dropped the webView component onto the main screen
+
+![image](https://github.com/user-attachments/assets/f0a9a007-c371-403a-a3d7-b6befaa73438)
+
+
+To have it take the full screen on any phone I constrained it on all sides and changed the layout_width and layout_height to 0dp
+
+![image](https://github.com/user-attachments/assets/a9a5b4a9-387c-4d93-9cce-b36c9efcfeb7)
+
+
+and if you switch to view the raw XML code:
+
+![image](https://github.com/user-attachments/assets/4e3026da-8695-4a7c-9755-4bb44527eae7)
+
+
+I then went ahead and created an assets folder within my Android directory structure and dropped the contents of the build directory into it:
+
+![image](https://github.com/user-attachments/assets/18c801b2-24e4-4072-8081-49fe85f600f9)
+
+Now I just needed a way to load this html into the webview. 
+
+I added these two lines to the MainActivity code, first telling it to find the webview I meant from the xml file, then to load a URL on it. 
+
+The path is a special path that the android filesystem uses for bundled files within the application.
+```
+WebView wv = (WebView)findViewById(R.id.webView1);
+wv.loadUrl("file:///android_asset/html/index.html");
+```
+
+Excitedly I hooked up my phone and ran the app via USB debugging and was greeted with this:
+
+![image](https://github.com/user-attachments/assets/974a5ee4-189f-467c-add8-14834364579f)
+
+
+Not the result I was hoping for, so I had to read some documentation and do some research and thankfully I definitely wasn’t the first person to think of loading a compiled web app onto a phone in a wrapper native application, so with some readin i learned how to enable Javascript within the webview, and although that made the app show, it didn’t actually work. I anticipated this as I read about other people’s experiences and so knew that I just needed to adjust some settings such as allowing plaintext traffic and so on:
+
+```
+WebSettings webSettings = wv.getSettings();
+wv.setWebChromeClient(new WebChromeClient());
+webSettings.setJavaScriptEnabled(true);
+webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+webSettings.setAllowFileAccessFromFileURLs(true);
+webSettings.setAllowUniversalAccessFromFileURLs(true);
+webSettings.setDomStorageEnabled(true);
+```
+
+I also had to add the following to use the Internet in AndroidManifest.xml
+
+```
+<uses-permission android:name="android.permission.INTERNET" />
+and to the <application tag:
+
+<application
+   android:usesCleartextTraffic="true"
+</application>
+```
+
+Yay! It worked perfectly!
+
+![image](https://github.com/user-attachments/assets/378fd11f-8ae8-4f57-bc41-8aea82d2a325)
+
+
+And here's the full code:
+
+```
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.os.Bundle;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+
+public class MainActivity extends AppCompatActivity {
+
+   @Override
+   protected void onCreate(Bundle savedInstanceState) {
+       super.onCreate(savedInstanceState);
+       setContentView(R.layout.activity_main);
+       WebView wv = (WebView)findViewById(R.id.webView1);
+
+       WebSettings webSettings = wv.getSettings();
+       wv.setWebChromeClient(new WebChromeClient());
+       webSettings.setJavaScriptEnabled(true);
+       webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+       webSettings.setAllowFileAccessFromFileURLs(true);
+       webSettings.setAllowUniversalAccessFromFileURLs(true);
+       webSettings.setDomStorageEnabled(true);
+       wv.loadUrl("file:///android_asset/html/index.html");
+
+   }
+}
+```
+
+Now I could also build an APK and give it to whoever I wanted, only to find out that Google Drive is not an option, as it just doesn’t work, on my phone it said “Network Error” even though I’m able to download other files including other .APKs I also made, so I guess it’s triggering some kind of protection.
+
+At least I can just drop it in the DCIM directory on my phone over USB and send it to my girlfriend on Telegram.
+
+Anyway, so that’s that, it works! I’ve got a phone controllable LED light!
+
+I decided to go back and add some finishing touches, refactoring the code and making the thing a bit more pretty,
+
+The full code is available in the repo!
