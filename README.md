@@ -1,5 +1,9 @@
 # Control LEDs hooked up to an Arduino via the internet!
 
+Small little project with the design goal of making some LEDs controllable via the serial console using an Arduino, connecting it to another computer, writing a Python FastAPI to have endpoints to control that over the internet and writing a client app in react that I and guests could use to control the LEDs in my flat from their phones.
+
+### The gist of it is
+
 Connect LEDs using the below diagram:
 
 ![image](https://github.com/user-attachments/assets/8b0ce991-a353-48b1-9161-30cb0b4439ef)
@@ -56,6 +60,8 @@ Feel free to use this in your projects!
 ### If you also want the client
 
 Just build the react app in the client folder of this code altering the request destination and key to match ones in your python API, then open index.html in build, or drop the files in "build" to the dir in the android app code in the android folder and compile that as an .APK in android studio, then send it to your phone and it *should* work!
+
+There may be errors as this code wasn't really written to be easily distributable but they should not be too complex to fix.
 
 # If you'd like to make this yourself, consider reading the tutorial I wrote on this project below:
 
