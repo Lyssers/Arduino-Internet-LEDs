@@ -1,6 +1,6 @@
 # Control LEDs hooked up to an Arduino via the internet!
 
-Small little project with the design goal of making some LEDs controllable via the serial console using an Arduino, connecting it to another computer, writing a Python FastAPI to have endpoints to control that over the internet and writing a client app in react that I and guests could use to control the LEDs in my flat from their phones.
+A cute little hobby project with the design goal of making some LEDs controllable via the serial console using an Arduino, connecting it to another computer, writing a Python FastAPI to have endpoints to control that over the internet and writing a client app in react that I and guests could use to control the LEDs in my flat from their phones.
 
 ### The gist of it is
 
@@ -519,9 +519,9 @@ case 'p':
 
 And that's that!
 
-If you want to also control it over the internet, the best way imo is to use a Raspberry Pi.
+If you want to also control it over the internet, the best way imo is to use a Raspberry Pi as a server.
 
-Now you could in theory just hook up the lights to a raspberry pi as well, but I did want the arduino-LED set up to be reusable for other things so I segmented it. This way, I don't have to use a Pi, the script could run just as well on an old laptop or server. 
+Now you could in theory just hook up the lights to a raspberry pi as well, but I did want the arduino-LED set up to be reusable for other things so I decided to sacrifice performance in favour of compartmentalization. My Pi isn't static and moves about frequently, and I want the lights to be always available. This way, I don't have to use a Pi, the script could run just as well on an old laptop or server. Plus I wanted to do some coding with Arduino so... 🤷‍♀️
 
 Bear in mind that due to the speed of serial, USB and the Pi and arduino, this will be slow. Connecting lights to a Pi directly is much faster and if you're using it for the web part it could probably significantly improve performance.
 
