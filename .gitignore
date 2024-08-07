@@ -38,20 +38,20 @@ packages/react-devtools-inline/dist
 packages/react-devtools-shell/dist
 packages/react-devtools-timeline/dist
 
-led_controller/public/
-led_controller/build/
-led_controller/src/App_with_key.js
-led_controller/src/package-lock.json
-led_controller/src/reportWebVitals.js
-android_webview/ArduinoLEDControl/build*
-android_webview/ArduinoLEDControl/app/proguard-rules.pro
-android_webview/ArduinoLEDControl/gradle*
-android_webview/ArduinoLEDControl/app/src/main/res/mipmap*
-android_webview/ArduinoLEDControl/app/src/main/res/drawable*
-android_webview/ArduinoLEDControl/app/src/main/assets/html/
-android_webview/ArduinoLEDControl/app/src/androidTest
-android_webview/ArduinoLEDControl/app/src/main/Alyssa_launcher-playstore.png
-android_webview/ArduinoLEDControl/app/src/test/
+client/led_controller/public/
+client/led_controller/build/
+client/led_controller/src/App_with_key.js
+client/led_controller/src/package-lock.json
+client/led_controller/src/reportWebVitals.js
+client/android/android_webview/ArduinoLEDControl/build*
+client/android/android_webview/ArduinoLEDControl/app/proguard-rules.pro
+client/android/android_webview/ArduinoLEDControl/gradle*
+client/android/android_webview/ArduinoLEDControl/app/src/main/res/mipmap*
+client/android/android_webview/ArduinoLEDControl/app/src/main/res/drawable*
+client/android/android_webview/ArduinoLEDControl/app/src/main/assets/html/
+client/android/android_webview/ArduinoLEDControl/app/src/androidTest
+client/android/android_webview/ArduinoLEDControl/app/src/main/Alyssa_launcher-playstore.png
+client/android/android_webview/ArduinoLEDControl/app/src/test/
 
 # Gradle files
 .gradle/
